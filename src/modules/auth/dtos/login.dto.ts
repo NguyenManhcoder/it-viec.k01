@@ -3,8 +3,7 @@ import { IsEmail, IsNotEmpty } from "class-validator";
 import { IsStrongPassword } from "src/commons/decorators/is-strong-password.decorator";
 
 export class loginDto{
-
-    @ApiProperty({example: 'user'})
+    @ApiProperty({example: 'user@gmail.com'})
     @IsEmail()
     @IsNotEmpty()
     email:string;
