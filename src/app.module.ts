@@ -8,7 +8,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ormConfig } from './ormconfig';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
-import { config } from 'process';
 
 @Module({
   imports: [
@@ -18,11 +17,11 @@ import { config } from 'process';
     JwtModule.registerAsync({
       imports:[ConfigModule],
       inject:[ConfigService],
-      useFactory:(ConfigService:ConfigService) =>({
-        secret:ConfigService.get('jwtAuth').jwtTokenSecret,
-      })
+      useFactory:(configService:ConfigService) =>({
+        secret:configService.get('jwtAuth').jwtTokenSecret,
+      }),
     }),
-    AuthModule
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
