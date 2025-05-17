@@ -8,6 +8,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ormConfig } from './ormconfig';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtModule } from '@nestjs/jwt';
+import { config } from 'process';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthGuard } from './modules/auth/auth.guard';
 
 @Module({
   imports: [
@@ -17,13 +20,16 @@ import { JwtModule } from '@nestjs/jwt';
     JwtModule.registerAsync({
       imports:[ConfigModule],
       inject:[ConfigService],
-      useFactory:(configService:ConfigService) =>({
-        secret:configService.get('jwtAuth').jwtTokenSecret,
-      }),
+      useFactory:(ConfigService:ConfigService) =>({
+        secret:ConfigService.get('jwtAuth').jwtTokenSecret,
+      })
     }),
-    AuthModule,
+    AuthModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,{
+    provide: APP_GUARD,
+    useClass: AuthGuard,
+  },],
 })
 export class AppModule {}
