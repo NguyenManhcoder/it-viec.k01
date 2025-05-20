@@ -10,6 +10,8 @@ import { loginDto } from './dtos/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { refreshTokenDto } from './dtos/refresh-token.dto';
 import { User } from 'src/databases/entities/user.entity';
+import { loginGoogleDto } from './dtos/login-google.dto';
+import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
@@ -181,4 +183,67 @@ export class AuthService {
     }
     }
 
+    async loginGoogle(body: loginGoogleDto){
+        const { token } = body;
+
+        const ggClientId = this.configService.get('google').clientId;
+        const ggSecret = this.configService.get('google').clientSecret;
+
+        const oAuth2Client = new OAuth2Client(ggClientId,ggSecret);
+        const ggLoginTicket = await oAuth2Client.verifyIdToken({
+            idToken: token,
+            audience:ggClientId
+        })
+
+        console.log(ggLoginTicket)
+
+        const { email_verified,email,name } = ggLoginTicket.getPayload()
+        if(!email_verified){
+            throw new HttpException(
+                'Email is not verified: ' + email,
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
+        let userRecord = await this.userRepository.findOneBy({
+            email:email,
+            // loginType: LOGIN_TYPE.GOOGLE
+        })
+
+        // check xem email da dung de dang ki user chua
+        if(userRecord && userRecord.loginType === LOGIN_TYPE.EMAIL){
+            throw new HttpException(
+                'Email user to register with email : ' + email,
+
+                HttpStatus.FORBIDDEN
+            )
+        }
+
+        // Neu khong ton tai thi tao user login with gg moi
+        if (!userRecord){
+            userRecord = await this.userRepository.save({
+                email,
+                username:name,
+                loginType: LOGIN_TYPE.GOOGLE
+            });
+        }
+
+        await this.applicantRepository.save({
+            userId: userRecord.id
+        })
+
+     //gen ra cap token moi 
+    const payload = this.getPayLoad(userRecord)
+    const { accessToken, refreshToken} = await this.signToken(payload)   
+        
+
+    return {
+                message:'Login with gg successfully',
+                result:{
+                    accessToken,
+                    refreshToken,
+                },
+            };    
+
+    }
 }
