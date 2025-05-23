@@ -4,7 +4,6 @@ import { UserRepository } from 'src/databases/repositories/user.repository';
 import * as argon2 from 'argon2';
 import { LOGIN_TYPE, ROLE } from 'src/commons/enums/user.enum';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
-import { access } from 'fs';
 import { JwtService } from '@nestjs/jwt';
 import { loginDto } from './dtos/login.dto';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +11,10 @@ import { refreshTokenDto } from './dtos/refresh-token.dto';
 import { User } from 'src/databases/entities/user.entity';
 import { loginGoogleDto } from './dtos/login-google.dto';
 import { OAuth2Client } from 'google-auth-library';
+import { registerCompanyDto } from './dtos/register-company.dto';
+import { CompanyRepository } from 'src/databases/repositories/company.repository';
+import { DataSource } from 'typeorm';
+import { Company } from 'src/databases/entities/company.entity';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +23,9 @@ export class AuthService {
             private readonly jwtService:JwtService,
             private readonly configService:ConfigService,
             private readonly userRepository: UserRepository,
-            private readonly applicantRepository: ApplicantRepository
+            private readonly applicantRepository: ApplicantRepository,
+            private readonly companyRepository: CompanyRepository,
+            private readonly dataSource: DataSource,
         ){}
   async registerUser(body:RegisterUserDto) {
     const { username, email, password } = body;
@@ -244,6 +249,61 @@ export class AuthService {
                     refreshToken,
                 },
             };    
+
+    }
+
+    async registerCompany(body:registerCompanyDto) {
+        const {
+            username,
+            email,
+            password,
+            companyName,
+            companyAddress,
+            companyWebsite,
+        } = body;
+
+        // check email exist
+
+        const userRecord = await this.userRepository.findOneBy({email : email})
+        if(userRecord){
+            throw new HttpException('Emailis exist ',HttpStatus.BAD_REQUEST);
+        }
+
+        // hash password
+        const hashPassword = await argon2.hash(password);
+
+        const queryRunner = this.dataSource.createQueryRunner()
+        await queryRunner.connect()
+        await queryRunner.startTransaction();
+
+        try {
+
+            // create new user
+            const newUser = await this.dataSource.manager.save(User,{
+            email,
+            username,
+            password:hashPassword,
+            loginType:LOGIN_TYPE.EMAIL,
+            role:ROLE.COMPANY,
+            });
+
+            // create company by user
+            await this.dataSource.manager.save(Company,{
+                userId: newUser.id,
+                name: companyName,
+                location: companyAddress,
+                website: companyWebsite,
+            })
+
+            return {
+            message: 'Register hr successfully',
+        };
+        } catch (error) {
+            console.log(error)
+            await queryRunner.rollbackTransaction()
+        } finally{
+            await queryRunner.release();
+        }
 
     }
 }
