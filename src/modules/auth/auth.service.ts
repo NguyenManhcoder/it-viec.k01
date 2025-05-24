@@ -15,6 +15,7 @@ import { registerCompanyDto } from './dtos/register-company.dto';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { DataSource } from 'typeorm';
 import { Company } from 'src/databases/entities/company.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,7 @@ export class AuthService {
             private readonly applicantRepository: ApplicantRepository,
             private readonly companyRepository: CompanyRepository,
             private readonly dataSource: DataSource,
+            private readonly mailService: MailService,
         ){}
   async registerUser(body:RegisterUserDto) {
     const { username, email, password } = body;
@@ -40,6 +42,7 @@ export class AuthService {
     // hash password
     const hashPassword = await argon2.hash(password);
 
+    //create new user
     const newUser = await this.userRepository.save({
         email,
         username,
@@ -52,6 +55,17 @@ export class AuthService {
     await this.applicantRepository.save({
         userId: newUser.id
     })
+
+    //send mail 
+    await this.mailService.sendMail(
+        email,
+        'Welcome to ITViec', 
+        'welcome-applicant',
+        {
+        name:username,
+        email:email,
+        },
+    );
 
     return {
         message: 'Register user successfully',
@@ -294,6 +308,20 @@ export class AuthService {
                 location: companyAddress,
                 website: companyWebsite,
             })
+
+            await queryRunner.commitTransaction();
+
+            //send mail 
+            await this.mailService.sendMail(
+                email,
+                'Welcome to ITViec', 
+                'welcome-company',
+                {
+                name:username,
+                email:email,
+                company: companyName,
+                },
+            );
 
             return {
             message: 'Register hr successfully',
