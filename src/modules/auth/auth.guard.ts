@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from 'src/commons/decorators/public.decorator';
+import { ROLES_KEY } from 'src/commons/decorators/role.decorator';
+import { ROLE } from 'src/commons/enums/user.enum';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -13,16 +15,22 @@ export class AuthGuard implements CanActivate {
     ){}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+
+    // Check xem API co public khong
+
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-
+    
     if (isPublic) {
       // 💡 See this condition
       return true;
     }
+    
+    
+    // Check xem user co thuoc he thong khong
+    const request = context.switchToHttp().getRequest();
 
     const token = this.extractTokenFromHeader(request);
 
@@ -43,12 +51,30 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException()
     }
 
-    return true;
+
+    // Check role user
+     const requiredRoles = this.reflector.getAllAndOverride<ROLE[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (!requiredRoles) {
+      return true; // khong có vai trò nào được phép truy cập
+    }
+
+    // Lấy thông tin người dùng
+    const { user } = context.switchToHttp().getRequest();
+    console.log(user)
+
+    // Kiểm tra xem người dùng có ít nhất một trong các vai trò yêu cầu hay không
+    const result = requiredRoles.some((role) => user.role?.includes(role));
+
+    return result;
   }
 
   private extractTokenFromHeader(request: Request){
-    const authHeader = request.headers.get("authorization");
-  const [type, token] = authHeader?.split(" ") ?? [];
+    const authHeader = request.headers['authorization'];
+    const [type, token] = authHeader?.split(" ") ?? [];
     
     return type === 'Bearer' ? token : undefined
   }
