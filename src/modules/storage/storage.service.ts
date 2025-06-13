@@ -44,7 +44,6 @@ export class StorageService {
     if(error) {
       throw new Error('getSignedUrl failed : '+ error.message)
     }
-
     return data.signedUrl;
   }
 
@@ -61,7 +60,5 @@ export class StorageService {
 }
 
   
-  
-
 
 }
