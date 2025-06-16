@@ -6,11 +6,14 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { DataSource } from 'typeorm';
 import { Manuscript } from 'src/databases/entities/manuscript.entity';
 import { ManuscriptSkill } from 'src/databases/entities/manuscript-skill.entity';
+import { error } from 'console';
+import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
 @Injectable()
 export class ManuscriptService {
 
   constructor( 
     private readonly manuscriptRepository : ManuscriptRepository, 
+    private readonly manuscriptSkillRepository : ManuscriptSkillRepository, 
     private readonly companyRepository  :CompanyRepository ,
     private readonly dataSource: DataSource,
   ){}
@@ -69,12 +72,57 @@ export class ManuscriptService {
     
   }
 
-  async update(id:number,body:UpsertManuscriptDto,user:User){
-    return{
-      message: 'Update manuscript successfully',
-        result:'manuscriptUpdate',
-    }
+  async update(id: number, body: UpsertManuscriptDto, user: User) {
+  const companyRec = await this.companyRepository.findOneBy({
+    userId: user.id,
+  });
+
+  const manuscriptRec = await this.manuscriptRepository.findOneBy({ id });
+
+  if (!manuscriptRec || companyRec.id !== manuscriptRec.companyId) {
+    throw new HttpException('User FORBIDDEN', HttpStatus.FORBIDDEN);
   }
+
+  const { skillIds } = body;
+  delete body.skillIds;
+
+  const queryRunner = this.dataSource.createQueryRunner();
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    // Cập nhật manuscript
+    const manuscriptUpdated = await queryRunner.manager.save(Manuscript, {
+      ...manuscriptRec, // giữ id cũ
+      ...body,
+      companyId: companyRec.id,
+    });
+
+    // Xóa các skill cũ
+    await queryRunner.manager.delete(ManuscriptSkill, {
+      manuscriptId: id,
+    });
+
+    // Tạo các skill mới
+    const manuscriptSkills = skillIds.map(skillId => ({
+      manuscriptId: id,
+      skillId,
+    }));
+    await queryRunner.manager.save(ManuscriptSkill, manuscriptSkills);
+
+    await queryRunner.commitTransaction();
+
+    return {
+      message: 'Update manuscript successfully',  
+      result: manuscriptUpdated,
+    };
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await queryRunner.release();
+  }
+}
 
   // Thực hiện xoá mềm(soft delete) : đánh dấu bản ghi đã xoá chứ không xoá hẳn trong DB
   async delete (id:number, user:User){
