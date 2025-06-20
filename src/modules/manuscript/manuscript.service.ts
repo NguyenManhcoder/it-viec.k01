@@ -8,6 +8,9 @@ import { Manuscript } from 'src/databases/entities/manuscript.entity';
 import { ManuscriptSkill } from 'src/databases/entities/manuscript-skill.entity';
 import { error } from 'console';
 import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
+import { manuscriptQueriesDto } from './dto/manusript-queries.dto';
+import { query } from 'express';
+import { convertKeySortManuscript } from 'src/commons/utils/helper';
 @Injectable()
 export class ManuscriptService {
 
@@ -144,6 +147,136 @@ export class ManuscriptService {
 
     return{
       message:'Success'
+    }
+  }
+
+
+  async getAll (queries:manuscriptQueriesDto){
+
+    const {
+      page,
+      limit,
+      keyword,
+      companyAddress,
+      companyTypes,
+      levels,
+      workingModel,
+      industryIds,
+      maxSalary,
+      minSalary,
+      sort,
+    } = queries;
+
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.manuscriptRepository.createQueryBuilder('manuscript')
+    .leftJoin('manuscript.company','c')
+    .leftJoin('manuscript.manuscriptSkills','m')
+    .leftJoin('m.skill','s')
+    .select([
+      'manuscript.id AS "id"',
+      'manuscript.title AS "title"',
+      'manuscript.minSalary AS "minSalary"',
+      'manuscript.maxSalary AS "maxSalary"', 
+      'manuscript.summary AS "summary"', 
+      'manuscript.level AS "level"', 
+      'manuscript.workingModel AS "workingModel"', 
+      'manuscript.createdAt AS "createdAt"',
+      'c.id AS "companyId"',
+      'c.name AS "companyName"', 
+      'c.location AS "companyAddress"', 
+      'c.companySize AS "companySize"', 
+      'c.companyType AS "companyType"', 
+      'c.industry AS "companyIndustry"', 
+      "JSON_AGG(json_build_object('id',s.id,'name',s.name)) AS manuscriptSkills",
+    ]).groupBy('manuscript.id,c.id')
+    
+
+    // ĐIều kiện nếu có companyAddress truyền vào
+    // Truyền mỗi address thì dùng = 
+    if(companyAddress){
+      queryBuilder.andWhere('c.location = :address',{
+        address:companyAddress,
+      })
+    }
+
+    if(companyTypes){
+      //Truyền array thì dùng IN
+      queryBuilder.andWhere('c.companyType IN (:...types)',{
+        types:companyTypes,
+      })
+    }
+
+    if(levels){
+      //Truyền array thì dùng IN
+      queryBuilder.andWhere('manuscript.level IN (:...levels)',{
+        levels:levels,
+      })
+    }
+
+    if(workingModel){
+      //Truyền array thì dùng IN
+      queryBuilder.andWhere('manuscript.workingModel IN (:...workingModel)',{
+        workingModel:workingModel,
+      })
+    }
+
+    if(industryIds){
+      //Truyền array thì dùng IN
+      queryBuilder.andWhere('c.industry IN (:...industryIds)',{
+        industryIds:industryIds,
+      })
+    }
+
+    if(minSalary && maxSalary){
+      queryBuilder
+      .andWhere('manuscript.minSalary <= :minSalary',{
+        minSalary:minSalary,
+      })
+      .andWhere('manuscript.maxSalary => :maxSalary',{
+        maxSalary:maxSalary,
+      })
+    }
+
+    if(keyword){
+      queryBuilder
+      .andWhere('s.name ILIKE :keyword',{
+        keyword:`%${keyword}%`,
+      })
+      .orWhere('manuscript.title ILIKE :keyword',{
+        keyword:`%${keyword}`,
+      })
+      .orWhere('manuscript.summary ILIKE :keyword',{
+        keyword:`%${keyword}`,
+      })
+    }
+
+    if(sort){
+      const order = convertKeySortManuscript(sort);
+      console.log("order : ",order)
+      for(const key of Object.keys(order)){
+          queryBuilder.addOrderBy(keyword,order[key])
+        }
+    } else {
+      queryBuilder.addOrderBy('manuscript.createdAt','DESC')
+    }
+
+    // limit là lấy số lượng bản ghi
+    // offset là số bản ghi bỏ qua
+    queryBuilder.limit(limit).offset(skip);
+
+    const data = await queryBuilder.getRawMany();
+    const total = await queryBuilder.getCount();
+
+
+    return {
+      message: "Get all manuscript success",
+      result:{
+        total,
+        limit,
+        page,
+        data,
+      }
     }
   }
 }
