@@ -3,9 +3,11 @@ import {
   Body, 
   Controller,
   Delete,
+  Get,
   Param, 
   Post, 
-  Put, 
+  Put,
+  Query, 
 } from "@nestjs/common";
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { Roles } from "src/commons/decorators/role.decorator";
@@ -13,6 +15,9 @@ import { ROLE } from "src/commons/enums/user.enum";
 import { GetCurrentUser } from "src/commons/decorators/get-current-user.decorator";
 import { User } from "src/databases/entities/user.entity";
 import { UpsertManuscriptDto } from "./dto/upsert-manuscript.dto";
+import { Public } from "src/commons/decorators/public.decorator";
+import { query } from "express";
+import { manuscriptQueriesDto } from "./dto/manusript-queries.dto";
 
 @ApiBearerAuth()
 @Controller('manuscript')
@@ -45,4 +50,9 @@ export class ManuscriptController {
     return this.manuscriptService.delete(id,user)
   }
 
+  @Public()
+  @Get()
+  getAll(@Query() queries : manuscriptQueriesDto ){
+    return this.manuscriptService.getAll(queries)
+  }
 }

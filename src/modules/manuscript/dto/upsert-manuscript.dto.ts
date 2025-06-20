@@ -8,7 +8,7 @@ import {
     IsString 
 
 } from "class-validator";
-import { APPLICANT_LEVEL } from "src/commons/enums/manuscript.enum";
+import { APPLICANT_LEVEL, WORKING_MODEL } from "src/commons/enums/manuscript.enum";
 
 
 // update + insert
@@ -62,10 +62,13 @@ export class UpsertManuscriptDto{
     @IsOptional()
     level:APPLICANT_LEVEL;
 
-    @ApiProperty()
+    @ApiProperty({
+        example:WORKING_MODEL.AT_OFFICE,
+        enum:WORKING_MODEL,
+    })
     @IsString()
     @IsOptional()
-    workingModel:string;
+    workingModel:WORKING_MODEL;
 
     @ApiProperty()
     @IsNumber()
