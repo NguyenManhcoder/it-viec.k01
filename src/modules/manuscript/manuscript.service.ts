@@ -6,11 +6,10 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { DataSource } from 'typeorm';
 import { Manuscript } from 'src/databases/entities/manuscript.entity';
 import { ManuscriptSkill } from 'src/databases/entities/manuscript-skill.entity';
-import { error } from 'console';
 import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
 import { manuscriptQueriesDto } from './dto/manusript-queries.dto';
-import { query } from 'express';
 import { convertKeySortManuscript } from 'src/commons/utils/helper';
+import { RedisService } from '../redis/redis.service';
 @Injectable()
 export class ManuscriptService {
 
@@ -19,6 +18,7 @@ export class ManuscriptService {
     private readonly manuscriptSkillRepository : ManuscriptSkillRepository, 
     private readonly companyRepository  :CompanyRepository ,
     private readonly dataSource: DataSource,
+    private readonly redisService:RedisService,
   ){}
 
 
@@ -115,6 +115,8 @@ export class ManuscriptService {
 
     await queryRunner.commitTransaction();
 
+
+
     return {
       message: 'Update manuscript successfully',  
       result: manuscriptUpdated,
@@ -126,6 +128,42 @@ export class ManuscriptService {
     await queryRunner.release();
   }
 }
+
+  async get (id:number){
+    const manuKey = 'manu' + id;
+
+    // Step 1: get manuscriptRec tu redis
+    const  manuscript = await this.redisService.getKey(manuKey); 
+    let manuscriptRec: Manuscript;
+
+    // Step 2: check manuscript redis is null
+    if(!manuscript){
+
+      // Step 3: neu khong co 
+      // Step 3.1:  vao db lay
+      manuscriptRec  = await this.manuscriptRepository.findOne({
+        where:{
+          id,
+        }
+      })  
+
+      if(!manuscriptRec){
+        throw new HttpException('Not found',HttpStatus.NOT_FOUND)
+      }
+
+      // Step 3.2:neu mkhong co thi vao db lay
+      await this.redisService.setKey(manuKey,JSON.stringify(manuscriptRec))
+    } else{
+      manuscriptRec = JSON.parse(manuscript);
+    }
+
+   
+    // Neu co trong redis thi tra ve 
+    return{
+      message:'Get manuscript successfully',
+      result:manuscriptRec,
+    }
+  }
 
   // Thực hiện xoá mềm(soft delete) : đánh dấu bản ghi đã xoá chứ không xoá hẳn trong DB
   async delete (id:number, user:User){
@@ -144,7 +182,9 @@ export class ManuscriptService {
 
 
     await this.manuscriptRepository.softDelete(id)
+    // Xoá data trong redis vì dữ liệu thay đổi
 
+    await this.redisService.setKey( 'manu' + id,'');
     return{
       message:'Success'
     }

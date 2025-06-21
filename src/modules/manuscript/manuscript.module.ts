@@ -6,6 +6,7 @@ import { StorageService } from '../storage/storage.service';
 import { ManuscriptRepository } from 'src/databases/repositories/manuscript.repository';
 import { CompanyRepository } from 'src/databases/repositories/company.repository';
 import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
+import { RedisService } from '../redis/redis.service';
 
 @Module({
   controllers: [ManuscriptController],
@@ -14,7 +15,8 @@ import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript
     ManuscriptRepository,
     StorageService,
     CompanyRepository,
-    ManuscriptSkillRepository
+    ManuscriptSkillRepository,
+    RedisService,
   ],
 })
 export class ManuscriptModule {}
