@@ -17,6 +17,7 @@ import { SkillModule } from './modules/skill/skill.module';
 import { IndustryModule } from './modules/industries/industry.module';
 import { CompanyModule } from './modules/company/company.module';
 import { ManuscriptModule } from './modules/manuscript/manuscript.module';
+import { RedisModule } from './modules/redis/redis.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ManuscriptModule } from './modules/manuscript/manuscript.module';
     IndustryModule,
     CompanyModule,
     ManuscriptModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService,{
