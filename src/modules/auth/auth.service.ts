@@ -16,19 +16,22 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { DataSource } from 'typeorm';
 import { Company } from 'src/databases/entities/company.entity';
 import { MailService } from '../mail/mail.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class AuthService {
 
-        constructor (
-            private readonly jwtService:JwtService,
-            private readonly configService:ConfigService,
-            private readonly userRepository: UserRepository,
-            private readonly applicantRepository: ApplicantRepository,
-            private readonly companyRepository: CompanyRepository,
-            private readonly dataSource: DataSource,
-            private readonly mailService: MailService,
-        ){}
+    constructor (
+        private readonly jwtService:JwtService,
+        private readonly configService:ConfigService,
+        private readonly userRepository: UserRepository,
+        private readonly applicantRepository: ApplicantRepository,
+        private readonly companyRepository: CompanyRepository,
+        private readonly dataSource: DataSource,
+        private readonly mailService: MailService,
+        @InjectQueue('mail-queue') private mailQueue: Queue,
+    ){}
   async registerUser(body:RegisterUserDto) {
     const { username, email, password } = body;
 
@@ -57,15 +60,21 @@ export class AuthService {
     })
 
     //send mail 
-    await this.mailService.sendMail(
-        email,
-        'Welcome to ITViec', 
-        'welcome-applicant',
-        {
+    // await this.mailService.sendMail(
+    //     email,
+    //     'Welcome to ITViec', 
+    //     'welcome-applicant',
+    //     {
+    //     name:username,
+    //     email:email,
+    //     },
+    // );
+
+    // add job cho producer
+    const job = await this.mailQueue.add('send-mail-applicant',{
         name:username,
         email:email,
-        },
-    );
+    });
 
     return {
         message: 'Register user successfully',
@@ -312,16 +321,23 @@ export class AuthService {
             await queryRunner.commitTransaction();
 
             //send mail 
-            await this.mailService.sendMail(
-                email,
-                'Welcome to ITViec', 
-                'welcome-company',
-                {
+            // await this.mailService.sendMail(
+            //     email,
+            //     'Welcome to ITViec', 
+            //     'welcome-company',
+            //     {
+            //     name:username,
+            //     email:email,
+            //     company: companyName,
+            //     },
+            // );
+
+            // add job cho producer
+            const job = await this.mailQueue.add('send-mail-company',{
                 name:username,
                 email:email,
                 company: companyName,
-                },
-            );
+            });
 
             return {
             message: 'Register hr successfully',

@@ -129,7 +129,7 @@ export class ManuscriptService {
   }
 }
 
-  async get (id:number){
+  async get (id){
     const manuKey = 'manu' + id;
 
     // Step 1: get manuscriptRec tu redis
@@ -151,8 +151,8 @@ export class ManuscriptService {
         throw new HttpException('Not found',HttpStatus.NOT_FOUND)
       }
 
-      // Step 3.2:neu mkhong co thi vao db lay
-      await this.redisService.setKey(manuKey,JSON.stringify(manuscriptRec))
+      // Step 3.2:neu khong co thi vao db lay
+      await this.redisService.setKey(manuKey,JSON.stringify(manuscriptRec));
     } else{
       manuscriptRec = JSON.parse(manuscript);
     }
