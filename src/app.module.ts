@@ -20,6 +20,7 @@ import { ManuscriptModule } from './modules/manuscript/manuscript.module';
 import { RedisModule } from './modules/redis/redis.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ApplicationModule } from './modules/application/application.module';
+import { ApplicantModule } from './modules/applicant/applicant.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ApplicationModule } from './modules/application/application.module';
     ManuscriptModule,
     RedisModule,
     ApplicationModule,
+    ApplicantModule,
     
     //setup bullmq connect to redis
     BullModule.forRootAsync({
