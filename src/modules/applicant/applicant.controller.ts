@@ -36,11 +36,12 @@ export class ApplicantController {
   @Roles(ROLE.APPLICANT)
   @Put('skills/:id')
     updateSkill
-    (@Body() body : UpsertApplicantDto, 
-    @GetCurrentUser() user: User,
+    (
     @Param('id') id:number,
+    @Body() body : UpsertApplicantDto, 
+    @GetCurrentUser() user: User,
   ){
-      return this.applicantService.updateSkill(body,user,id)
+      return this.applicantService.updateSkill(id,body,user)
     }
 
   @Roles(ROLE.APPLICANT)
