@@ -2,15 +2,17 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ApplicantRepository } from 'src/databases/repositories/applicant.repository';
 
 import { User } from 'src/databases/entities/user.entity';
+import { ManuscriptRepository } from 'src/databases/repositories/manuscript.repository';
 import { StorageService } from '../storage/storage.service';
-import { UpdateApplicantDto } from './dto/update-applicant.dto';
 import { UpsertApplicantDto } from './dto/upsert-applicant.dto';
 import { ApplicantSkillRepository } from 'src/databases/repositories/applicant-skill.repository';
+import { UpdateApplicantDto } from './dto/update-applicant.dto';
 @Injectable() 
 export class ApplicantService {
 
   constructor( 
     private readonly applicantRepository : ApplicantRepository ,
+    private readonly manuscriptRepository : ManuscriptRepository ,
     private readonly applicantSkillRepository : ApplicantSkillRepository ,
     private readonly storageService : StorageService ,
 
@@ -20,34 +22,28 @@ export class ApplicantService {
 
     const applicantRec  = await this.applicantRepository.findOne({
       where:{
-        userId: user.id,
+        userId:user.id,
       },
     })  
     
-    // if(!manuscriptRec){
-    //   throw new HttpException('Not found',HttpStatus.NOT_FOUND)
-    // }
-
-    // const applicant = await this.applicantRepository.findOne({
-    //   where:{
-    //     userId: user.id,
-    //   }
-    // })
-
-    // // Validate file resume
-    if(body.avatar){
+    if(body.avatar ){
       await this.storageService.getSignedUrl(body.avatar);
-    }  
+    }
 
-
-    const UpdatedApplicantRec = await this.applicantRepository.save({
+    const applicant = await this.applicantRepository.findOne({
+      where:{
+        userId: user.id,
+      }
+    })
+    const updateApplicantRec = await this.applicantRepository.save({
       ...applicantRec,
       ...body,
-    }) ;
+    })
+
     
     return {
         message: 'Update applicant successfully',
-        result:UpdatedApplicantRec  
+        result:updateApplicantRec
       }
   }
 
@@ -55,36 +51,36 @@ export class ApplicantService {
     const applicantRec = await this.applicantRepository.findOne({
       where:{
         userId:user.id,
-      }
+      },
     });
 
     const applicantSkillRec = await this.applicantSkillRepository.save({
       ...body,
-      applicantId: applicantRec.id,
+      applicantId:applicantRec.id,
     });
 
-
-    return {
-      message:'Create applicant skill successfully'
+    return{
+      message:'Create applicant skill successfully',
+      result:applicantSkillRec,
     }
   }
-  
-  async updateSkill(body:UpsertApplicantDto,user:User,id:number){
 
+  async updateSkill(id:number, body:UpsertApplicantDto,user:User){
     const applicantSkillRec = await this.applicantSkillRepository.findOneBy({
-      id,
-    })
+      id
+    });
 
-      const applicantUpdateSkillRec = await this.applicantSkillRepository.save({
+    const updateAppicantSkillRec = await this.applicantSkillRepository.save({
       ...applicantSkillRec,
       ...body,
-    })
+    });
 
-    return {
+    return{
       message:'Update applicant skill successfully',
-      result:applicantUpdateSkillRec,
+      result:updateAppicantSkillRec
     }
   }
+
 
   async getSkills(user:User){
     const applicantRec = await this.applicantRepository.findOne({
@@ -95,13 +91,37 @@ export class ApplicantService {
 
     const applicantSkillRec = await this.applicantSkillRepository.find({
       where:{
-        applicantId:applicantRec.id 
+        applicantId:applicantRec.id
       }
-    });
+    })
 
-    return{
+    return {
       message:'Get applicant skills successfully',
       result:applicantSkillRec,
     }
   }
+  async getAllByManuscript(manuscriptId:number, user:User){
+    // const manuscriptRec = await this.manuscriptRepository.findOne({
+    //   where:{
+    //     id:manuscriptId,
+    //   },
+    //   relations:['company'],
+    // });
+
+    // if(!manuscriptRec){
+    //   throw new HttpException('Manuscript not found ', HttpStatus.NOT_FOUND);
+    // }
+
+    // if(manuscriptRec.company.userId !== user.id){
+    //   throw new HttpException('Company not access ',HttpStatus.FORBIDDEN);
+    // }
+
+    // const result = await this.applicantRepository.find({
+    //   where:{
+    //     manuscriptId,
+    //   },
+    //   relations:['applicant']
+    // });
+  }
+  
 }

@@ -56,9 +56,15 @@ export class ManuscriptController {
     return this.manuscriptService.getAll(queries)
   }
 
-  @Public()
+  @Roles(ROLE.APPLICANT)
   @Get()
-  get(@Param('id') id:number ){
-    return this.manuscriptService.get(id)
+  getAllByViewed(@Query() queries : manuscriptQueriesDto, @GetCurrentUser() user : User ){
+    return this.manuscriptService.getAllByViewed(queries, user)
+  }
+
+  @Public()
+  @Get(':id')
+  get(@Param('id') id:number , @GetCurrentUser() user:User){
+    return this.manuscriptService.get(id,user)
   }
 }

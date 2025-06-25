@@ -22,12 +22,11 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    
+
     if (isPublic) {
       // 💡 See this condition
       return true;
     }
-    
     
     // Check xem user co thuoc he thong khong
     const request = context.switchToHttp().getRequest();
@@ -48,8 +47,13 @@ export class AuthGuard implements CanActivate {
         request['user'] = payload;
 
     } catch{
-        throw new UnauthorizedException()
+      throw new UnauthorizedException()
     }
+
+    // if (isPublic) {
+    //   // 💡 See this condition
+    //   return true;
+    // } 
 
 
     // Check role user

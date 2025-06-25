@@ -10,12 +10,15 @@ import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript
 import { manuscriptQueriesDto } from './dto/manusript-queries.dto';
 import { convertKeySortManuscript } from 'src/commons/utils/helper';
 import { RedisService } from '../redis/redis.service';
+import { ManuscriptViewRepository } from 'src/databases/repositories/manuscript-view.repository';
+import { CommonQueryDto } from 'src/commons/dtos/common-query.dto';
 @Injectable()
 export class ManuscriptService {
 
   constructor( 
     private readonly manuscriptRepository : ManuscriptRepository, 
     private readonly manuscriptSkillRepository : ManuscriptSkillRepository, 
+    private readonly manuscriptViewRepository : ManuscriptViewRepository, 
     private readonly companyRepository  :CompanyRepository ,
     private readonly dataSource: DataSource,
     private readonly redisService:RedisService,
@@ -129,36 +132,81 @@ export class ManuscriptService {
   }
 }
 
-  async get (id){
-    const manuKey = 'manu' + id;
+  // get manuscript dùng caching
+  // async get (id){
+  //   const manuKey = 'manu' + id;
 
-    // Step 1: get manuscriptRec tu redis
-    const  manuscript = await this.redisService.getKey(manuKey); 
-    let manuscriptRec: Manuscript;
+  //   // Step 1: get manuscriptRec tu redis
+  //   const  manuscript = await this.redisService.getKey(manuKey); 
+  //   let manuscriptRec: Manuscript;
 
-    // Step 2: check manuscript redis is null
-    if(!manuscript){
+  //   // Step 2: check manuscript redis is null
+  //   if(!manuscript){
 
-      // Step 3: neu khong co 
-      // Step 3.1:  vao db lay
-      manuscriptRec  = await this.manuscriptRepository.findOne({
-        where:{
-          id,
-        }
-      })  
+  //     // Step 3: neu khong co 
+  //     // Step 3.1:  vao db lay
+  //     manuscriptRec  = await this.manuscriptRepository.findOne({
+  //       where:{
+  //         id,
+  //       }
+  //     })  
 
-      if(!manuscriptRec){
-        throw new HttpException('Not found',HttpStatus.NOT_FOUND)
-      }
+  //     if(!manuscriptRec){
+  //       throw new HttpException('Not found',HttpStatus.NOT_FOUND)
+  //     }
 
-      // Step 3.2:neu khong co thi vao db lay
-      await this.redisService.setKey(manuKey,JSON.stringify(manuscriptRec));
-    } else{
-      manuscriptRec = JSON.parse(manuscript);
-    }
+  //     // Step 3.2:neu khong co thi vao db lay
+  //     await this.redisService.setKey(manuKey,JSON.stringify(manuscriptRec));
+  //   } else{
+  //     manuscriptRec = JSON.parse(manuscript);
+  //   }
 
    
-    // Neu co trong redis thi tra ve 
+  //   // Neu co trong redis thi tra ve 
+  //   return{
+  //     message:'Get manuscript successfully',
+  //     result:manuscriptRec,
+  //   }
+  // }
+
+   async get (id:number, user:User){
+
+    console.log(user)
+    const manuscriptRec  = await this.manuscriptRepository.findOne({
+      where:{
+        id,
+      }
+    })  
+
+    if(!manuscriptRec){
+      throw new HttpException('Not found',HttpStatus.NOT_FOUND)
+    }
+
+    // nếu có user thì thực hiện save recent viewed job
+    if(user){
+      const manuscriptViewRec = await this.manuscriptViewRepository.findOne({
+        where:{
+          userId:user.id,
+          manuscriptId:id
+        }
+      })
+
+      if(manuscriptViewRec){
+        // Nếu có rồi thì update thời gian xem
+        await this.manuscriptViewRepository.save({
+          ...manuscriptViewRec,
+          updatedAt:new Date(),
+        })
+      } else{
+        // Nếu chưa có thì tạo ra bản ghi mới
+        await this.manuscriptViewRepository.save({
+          userId:user.id,
+          manuscriptId:id,
+        })
+      }
+    }
+
+    
     return{
       message:'Get manuscript successfully',
       result:manuscriptRec,
@@ -319,4 +367,43 @@ export class ManuscriptService {
       }
     }
   }
+
+  async getAllByViewed(queries: CommonQueryDto,user:User ){
+    const {page,limit} = queries;
+    const skip = (page - 1) * limit;
+    const [data,total] = await this.manuscriptRepository.findAndCount({
+      where:{
+        manuscriptViews:{
+          userId:user.id,
+        }
+      },
+      skip,
+      take:limit,
+      relations:['manuscriptViews'],
+      order:{
+        manuscriptViews:{
+          updatedAt:'DESC',
+        }
+      }
+    })
+
+    return{
+
+      message:'Get recent manuscript successfully',
+      result:{
+        data,
+        metadata:{
+          total,
+          page,
+          limit,
+        },
+      }
+    }
+  }
+
+  
+
+
+
+
 }
