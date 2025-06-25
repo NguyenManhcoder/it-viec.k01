@@ -8,6 +8,7 @@ import { CompanyRepository } from 'src/databases/repositories/company.repository
 import { ManuscriptSkillRepository } from 'src/databases/repositories/manuscript-skill.repository';
 import { RedisService } from '../redis/redis.service';
 import { ManuscriptViewRepository } from 'src/databases/repositories/manuscript-view.repository';
+import { ManuscriptSaveRepository } from 'src/databases/repositories/manuscript-save.repository';
 
 @Module({
   controllers: [ManuscriptController],
@@ -19,6 +20,7 @@ import { ManuscriptViewRepository } from 'src/databases/repositories/manuscript-
     ManuscriptSkillRepository,
     RedisService,
     ManuscriptViewRepository,
+    ManuscriptSaveRepository
   ],
 })
 export class ManuscriptModule {}

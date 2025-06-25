@@ -18,6 +18,7 @@ import { UpsertManuscriptDto } from "./dto/upsert-manuscript.dto";
 import { Public } from "src/commons/decorators/public.decorator";
 import { query } from "express";
 import { manuscriptQueriesDto } from "./dto/manusript-queries.dto";
+import { CommonQueryDto } from "src/commons/dtos/common-query.dto";
 
 @ApiBearerAuth()
 @Controller('manuscript')
@@ -62,9 +63,29 @@ export class ManuscriptController {
     return this.manuscriptService.getAllByViewed(queries, user)
   }
 
+  @Roles(ROLE.APPLICANT)
+  @Get('favorite')
+    getAllByFavorite(
+      @Query() queries: CommonQueryDto ,
+      @GetCurrentUser() user:User
+  ){
+      return this.manuscriptService.getAllByFavorite(queries,user)
+    }
+
   @Public()
   @Get(':id')
   get(@Param('id') id:number , @GetCurrentUser() user:User){
     return this.manuscriptService.get(id,user)
   }
+
+  @Roles(ROLE.APPLICANT)
+  @Get('favorite/:id')
+    favorite(
+      @Param('id') id:number ,
+      @GetCurrentUser() user:User
+  ){
+      return this.manuscriptService.favorite(id,user)
+    }
+
+
 }
