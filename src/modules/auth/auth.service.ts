@@ -151,8 +151,6 @@ export class AuthService {
             },
         )
         
-        console.log(payloadRefreshToken)
-
         const userRecord = await this.userRepository.findOneBy({
             id: payloadRefreshToken.id,
         });
@@ -222,8 +220,6 @@ export class AuthService {
             idToken: token,
             audience:ggClientId
         })
-
-        console.log(ggLoginTicket)
 
         const { email_verified,email,name } = ggLoginTicket.getPayload()
         if(!email_verified){
