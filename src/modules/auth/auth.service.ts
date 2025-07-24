@@ -339,7 +339,6 @@ export class AuthService {
             message: 'Register hr successfully',
         };
         } catch (error) {
-            console.log(error)
             await queryRunner.rollbackTransaction()
         } finally{
             await queryRunner.release();
